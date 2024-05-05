@@ -107,10 +107,17 @@ USER frappe
 
 ARG FRAPPE_BRANCH=version-15
 ARG FRAPPE_PATH=https://github.com/frappe/frappe
-RUN export APP_INSTALL_ARGS="" && \
-  if [ -n "${APPS_JSON_BASE64}" ]; then \
-    export APP_INSTALL_ARGS="--apps_path=/opt/frappe/apps.json"; \
-  fi && \
+# Decode and write apps.json file
+ARG APPS_JSON_BASE64
+RUN mkdir -p /opt/frappe && \
+    if [ -n "${APPS_JSON_BASE64}" ]; then \
+        echo "Decoding APPS_JSON_BASE64 to /opt/frappe/apps.json" && \
+        echo "${APPS_JSON_BASE64}" | base64 -d > /opt/frappe/apps.json && \
+        echo "Decoded apps.json content:" && \
+        cat /opt/frappe/apps.json; \
+    else \
+        echo "No APPS_JSON_BASE64 provided."; \
+    fi && \
   bench init ${APP_INSTALL_ARGS} \
     --frappe-branch=${FRAPPE_BRANCH} \
     --frappe-path=${FRAPPE_PATH} \
