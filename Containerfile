@@ -105,10 +105,11 @@ RUN if [ -n "${APPS_JSON_BASE64}" ]; then \
 
 USER frappe
 
-ARG FRAPPE_BRANCH=version-15
-ARG FRAPPE_PATH=https://github.com/frappe/frappe
-# Decode and write apps.json file
+# ARGs for various configurations
 ARG APPS_JSON_BASE64
+USER root  # Switch to root temporarily for privileged operations
+
+# Decode Base64 and write apps.json file to /opt/frappe
 RUN mkdir -p /opt/frappe && \
     if [ -n "${APPS_JSON_BASE64}" ]; then \
         echo "Decoding APPS_JSON_BASE64 to /opt/frappe/apps.json" && \
@@ -117,8 +118,13 @@ RUN mkdir -p /opt/frappe && \
         cat /opt/frappe/apps.json; \
     else \
         echo "No APPS_JSON_BASE64 provided."; \
-    fi && \
-  bench init ${APP_INSTALL_ARGS} \
+    fi
+
+# Switch back to the appropriate user
+USER frappe
+
+# Initialize the Frappe bench
+RUN bench init ${APP_INSTALL_ARGS} \
     --frappe-branch=${FRAPPE_BRANCH} \
     --frappe-path=${FRAPPE_PATH} \
     --no-procfile \
@@ -126,9 +132,9 @@ RUN mkdir -p /opt/frappe && \
     --skip-redis-config-generation \
     --verbose \
     /home/frappe/frappe-bench && \
-  cd /home/frappe/frappe-bench && \
-  echo "{}" > sites/common_site_config.json && \
-  find apps -mindepth 1 -path "*/.git" | xargs rm -fr
+    cd /home/frappe/frappe-bench && \
+    echo "{}" > sites/common_site_config.json && \
+    find apps -mindepth 1 -path "*/.git" | xargs rm -fr
 
 FROM base as backend
 
