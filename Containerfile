@@ -107,11 +107,14 @@ USER frappe
 
 # ARGs for various configurations
 ARG APPS_JSON_BASE64
-USER root  # Switch to root temporarily for privileged operations
+# Adjust ownership of /opt/frappe
+USER root
+RUN mkdir -p /opt/frappe && chown -R frappe:frappe /opt/frappe
+USER frappe
 
-# Decode Base64 and write apps.json file to /opt/frappe
-RUN mkdir -p /opt/frappe && \
-    if [ -n "${APPS_JSON_BASE64}" ]; then \
+# Decode and write apps.json
+ARG APPS_JSON_BASE64
+RUN if [ -n "${APPS_JSON_BASE64}" ]; then \
         echo "Decoding APPS_JSON_BASE64 to /opt/frappe/apps.json" && \
         echo "${APPS_JSON_BASE64}" | base64 -d > /opt/frappe/apps.json && \
         echo "Decoded apps.json content:" && \
