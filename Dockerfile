@@ -2,9 +2,9 @@ ARG PYTHON_VERSION=3.11.6
 ARG DEBIAN_BASE=bookworm
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
 
-# Use an absolute path for the COPY command if relative paths are causing issues
-COPY ./resources/nginx-template.conf /templates/nginx/frappe.conf.template
-COPY ./resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
+RUN ls -la resources/
+COPY resources/nginx-template.conf /templates/nginx/frappe.conf.template
+COPY resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
 
 ARG WKHTMLTOPDF_VERSION=0.12.6.1-3
 ARG WKHTMLTOPDF_DISTRO=bookworm
