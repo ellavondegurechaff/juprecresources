@@ -2,6 +2,7 @@ ARG PYTHON_VERSION=3.11.6
 ARG DEBIAN_BASE=bookworm
 FROM python:${PYTHON_VERSION}-slim-${DEBIAN_BASE} AS base
 
+RUN ls -la /docker/resources
 COPY docker/resources/nginx-template.conf /templates/nginx/frappe.conf.template
 COPY docker/resources/nginx-entrypoint.sh /usr/local/bin/nginx-entrypoint.sh
 
