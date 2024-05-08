@@ -19,6 +19,7 @@ RUN useradd -ms /bin/bash frappe \
     vim \
     nginx \
     gettext-base \
+    file \
     # weasyprint dependencies
     libpango-1.0-0 \
     libharfbuzz0b \
@@ -77,6 +78,12 @@ RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
     # For frappe framework
     wget \
+    #for building arm64 binaries
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
     # For psycopg2
     libpq-dev \
     # Other
@@ -105,29 +112,13 @@ RUN if [ -n "${APPS_JSON_BASE64}" ]; then \
 
 USER frappe
 
-# ARGs for various configurations
-ARG APPS_JSON_BASE64
-# Adjust ownership of /opt/frappe
-USER root
-RUN mkdir -p /opt/frappe && chown -R frappe:frappe /opt/frappe
-USER frappe
-
-# Decode and write apps.json
-ARG APPS_JSON_BASE64
-RUN if [ -n "${APPS_JSON_BASE64}" ]; then \
-        echo "Decoding APPS_JSON_BASE64 to /opt/frappe/apps.json" && \
-        echo "${APPS_JSON_BASE64}" | base64 -d > /opt/frappe/apps.json && \
-        echo "Decoded apps.json content:" && \
-        cat /opt/frappe/apps.json; \
-    else \
-        echo "No APPS_JSON_BASE64 provided."; \
-    fi
-
-# Switch back to the appropriate user
-USER frappe
-
-# Initialize the Frappe bench
-RUN bench init ${APP_INSTALL_ARGS} \
+ARG FRAPPE_BRANCH=version-15
+ARG FRAPPE_PATH=https://github.com/frappe/frappe
+RUN export APP_INSTALL_ARGS="" && \
+  if [ -n "${APPS_JSON_BASE64}" ]; then \
+    export APP_INSTALL_ARGS="--apps_path=/opt/frappe/apps.json"; \
+  fi && \
+  bench init ${APP_INSTALL_ARGS}\
     --frappe-branch=${FRAPPE_BRANCH} \
     --frappe-path=${FRAPPE_PATH} \
     --no-procfile \
@@ -135,9 +126,9 @@ RUN bench init ${APP_INSTALL_ARGS} \
     --skip-redis-config-generation \
     --verbose \
     /home/frappe/frappe-bench && \
-    cd /home/frappe/frappe-bench && \
-    echo "{}" > sites/common_site_config.json && \
-    find apps -mindepth 1 -path "*/.git" | xargs rm -fr
+  cd /home/frappe/frappe-bench && \
+  echo "{}" > sites/common_site_config.json && \
+  find apps -mindepth 1 -path "*/.git" | xargs rm -fr
 
 FROM base as backend
 
@@ -165,19 +156,3 @@ CMD [ \
   "--preload", \
   "frappe.app:application" \
 ]
-
-# ARG CACHEBUST
-# ARG CUSTOM_APPS_JSON_BASE64
-# RUN cd /home/frappe/frappe-bench && export CUSTOM_APP_INSTALL_ARGS="" && echo "CUSTOM_APPS_JSON_BASE64: ${CUSTOM_APPS_JSON_BASE64}"; \
-#     if [ -n "${CUSTOM_APPS_JSON_BASE64}" ]; then \
-#         decoded_custom_apps_json=$(echo "${CUSTOM_APPS_JSON_BASE64}" | base64 -d); \
-#         export CUSTOM_APP_INSTALL_ARGS="${decoded_custom_apps_json}" && echo "decoded_custom_apps_json: ${decoded_custom_apps_json}"; \
-#     fi && \
-#     for app in $(echo "${CUSTOM_APP_INSTALL_ARGS}" | jq -c '.[]'); do \
-#         echo "Processing app: ${app}"; \
-#         url=$(echo "$app" | jq -r '.url'); \
-#         branch=$(echo "$app" | jq -r '.branch'); \
-#         echo "Processing app url: ${url}"; \
-#         echo "Processing app url branch: ${branch}"; \
-#         bench get-app ${url} --branch ${branch}; \
-#     done
